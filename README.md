@@ -1,8 +1,12 @@
 # HowOne Automation
 
-Browser automation skill for [HowOne AI](https://howone.ai/) — an agentic app builder platform. Uses `playwright-cli` snapshot-based browser control to create, publish, browse, and interact with AI-generated apps programmatically.
+An [agent skill](https://skills.sh/) that automates [HowOne AI](https://howone.ai/) — an agentic app builder platform. Uses `playwright-cli` snapshot-based browser control to create, publish, browse, and interact with AI-generated apps programmatically. No scripts needed — the agent issues commands directly.
 
-Designed as an [EvoScientist](https://github.com/X-iZhang/EvoScientist) installable skill, consumed by Claude Code / AI agents directly — no Python scripts needed.
+## Install
+
+```bash
+npx skills add X-iZhang/howone
+```
 
 ## How It Works
 
