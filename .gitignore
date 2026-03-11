@@ -5,8 +5,9 @@
 .playwright-cli/
 .playwright/
 
-# Claude Code (local settings, skills cache)
+# Claude Code
 .claude/
+CLAUDE.md
 
 # Session data (contains auth tokens)
 ~/.howone/
