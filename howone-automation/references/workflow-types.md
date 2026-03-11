@@ -1,37 +1,37 @@
 # HowOne Workflow Types
 
-HowOne AI generates agentic workflows based on your app requirements.
+HowOne AI generates agentic workflows based on your app requirements. Understanding these patterns helps when reviewing or editing generated apps.
 
 ## Common Workflow Patterns
 
-### 1. Content Generation Workflow
+### 1. Content Generation
 
 ```
-User Input → Prompt Builder → LLM Node → Output Formatter → Display
+User Input -> Prompt Builder -> LLM Node -> Output Formatter -> Display
 ```
 
 Used for: Blog generators, email writers, social media content
 
-### 2. Analysis Workflow
+### 2. Analysis
 
 ```
-User Input → Data Parser → Analysis Agent → Report Generator → Display/Export
+User Input -> Data Parser -> Analysis Agent -> Report Generator -> Display/Export
 ```
 
 Used for: Contract analysis, data insights, document review
 
-### 3. Multi-Step Processing Workflow
+### 3. Multi-Step Processing
 
 ```
-Input → Step 1 Agent → Step 2 Agent → Step 3 Agent → Final Output
+Input -> Step 1 Agent -> Step 2 Agent -> Step 3 Agent -> Final Output
 ```
 
 Used for: Complex transformations, multi-stage content creation
 
-### 4. Interactive Workflow
+### 4. Interactive
 
 ```
-User Input → Processing → User Confirmation → Final Action
+User Input -> Processing -> User Confirmation -> Final Action
 ```
 
 Used for: Approval workflows, iterative refinement
@@ -47,29 +47,50 @@ Used for: Approval workflows, iterative refinement
 | **Output Node** | Formats and displays results |
 | **API Node** | Calls external APIs |
 
-## Editing Workflows
+## Editing Workflows via Playwright CLI
 
-### Edit Single Node
-1. Click on the node in the workflow canvas
-2. Enter modification instructions in "Edit Node"
-3. AI will update that specific node
+The workflow editor is in the **right panel** of the project page. To edit workflows using playwright-cli:
 
-### Edit Entire Workflow
-1. Right-click blank area in workflow canvas
-2. Click "Edit Workflow"
-3. Describe the changes you want
+### Edit a Single Node
+```bash
+# Snapshot the project page
+playwright-cli snapshot
 
-### Version Management
-- View all versions in "Version History"
-- Rollback to any previous version
-- Self-evolution creates new versions automatically
+# Find and click the target node in the workflow panel
+# Nodes appear as interactive elements in the right panel
+playwright-cli click <ref-of-node>
+
+# Snapshot to see the edit panel that appears
+playwright-cli snapshot
+
+# Find the edit/instruction input and enter changes
+playwright-cli fill <ref-of-edit-input> "Add error handling to this node"
+playwright-cli click <ref-of-save-button>
+```
+
+### Edit Entire Workflow via Chat
+```bash
+# Use the chat panel (left side) to request workflow changes
+playwright-cli snapshot
+playwright-cli fill <ref-of-chat-input> "Add a data validation step before the LLM node"
+playwright-cli click <ref-of-send-button>
+
+# Wait for the AI to process and update the workflow
+playwright-cli snapshot
+```
+
+## Version Management
+
+- Each edit creates a new version automatically
+- View version history in the project settings
+- Self-evolution (auto-optimization) also creates new versions
 
 ## Self-Evolution
 
-Workflows can improve automatically through:
+Workflows can improve automatically:
 
 1. **Auto Evolution**: After first generation, AI evaluates and optimizes
-2. **Manual Evolution**: Select 2-5 input/output pairs, rate them, trigger optimization
+2. **Manual Evolution**: Provide 2-5 input/output examples, rate them, trigger optimization
 
 ### Evolution Modes
 

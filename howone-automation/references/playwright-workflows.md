@@ -1,16 +1,19 @@
 # Playwright CLI Workflows for HowOne
 
-Detailed step-by-step command sequences for each HowOne operation using `playwright-cli`.
+Step-by-step command sequences for all HowOne operations. This is the primary command reference.
 
-## Reading Snapshots
+## How Snapshots Work
 
-`playwright-cli snapshot` returns YAML describing all visible elements. Key concepts:
+`playwright-cli snapshot` returns YAML describing every visible element on the page.
 
-- **`ref`**: A short identifier (e.g., `e5a3`, `f12b`) used to target elements in commands
-- **`e`-prefix refs**: Elements in the main page
-- **`f`-prefix refs**: Elements inside iframes (e.g., app preview)
-- **Roles**: `button`, `link`, `textbox`, `heading`, `img`, etc.
-- **Names**: Text content or aria-label of the element
+Each element has:
+- **`ref`**: Short ID (e.g., `e5a3`) — use this in commands like `click`, `fill`
+- **`role`**: Element type — `button`, `link`, `textbox`, `heading`, `img`, etc.
+- **`name`**: Visible text or aria-label
+
+Ref prefixes:
+- **`e`-prefix** (e.g., `e5a3`): Main page elements
+- **`f`-prefix** (e.g., `f19e17`): Elements inside iframes (app preview)
 
 Example snapshot fragment:
 ```yaml
@@ -22,156 +25,177 @@ Example snapshot fragment:
   ref: e5b3
 ```
 
-To interact: `playwright-cli fill e4a2 "my prompt"` then `playwright-cli click e5b3`.
+To use: `playwright-cli fill e4a2 "my prompt"` then `playwright-cli click e5b3`.
 
-**Rule**: Never reuse refs from a previous snapshot. Always take a fresh snapshot before each action.
+**The pattern for every action:**
+1. `playwright-cli snapshot` — read the YAML
+2. Find the element by its `name` or `role` — note its `ref`
+3. Act: `playwright-cli click <ref>` or `playwright-cli fill <ref> "text"`
+4. `playwright-cli snapshot` — verify the action worked
 
 ---
 
-## Workflow 1: First-Time Setup & Login
+## Workflow 1: First-Time Login
 
-### Prerequisites
+OAuth requires a visible browser. Use `--headed`.
+
+### Google/GitHub OAuth
 ```bash
-npm install -g @anthropic-ai/playwright-cli@latest
-playwright-cli install chromium
+# 1. Open headed browser
+playwright-cli --headed open https://howone.ai
+
+# 2. Snapshot → find "Log in" or "Get Started" button
+playwright-cli snapshot
+
+# 3. Click login button
+playwright-cli click <ref-of-login-button>
+
+# 4. Snapshot → find "Continue with Google" or "Continue with GitHub"
+playwright-cli snapshot
+
+# 5. Click OAuth provider
+playwright-cli click <ref-of-oauth-button>
+
+# 6. MANUAL STEP: Complete OAuth in the visible browser window
+#    Wait for redirect back to howone.ai dashboard
+
+# 7. Verify login succeeded — snapshot should show dashboard, NOT login page
+playwright-cli snapshot
+
+# 8. Save session
 mkdir -p ~/.howone
-```
-
-### Login with Google/GitHub OAuth
-```bash
-# Step 1: Open headed browser (OAuth needs visible window)
-playwright-cli --headed open https://howone.ai
-
-# Step 2: Find login button
-playwright-cli snapshot
-# Look for: role: button, name containing "Log in" or "Sign in" or "Get Started"
-
-# Step 3: Click login
-playwright-cli click <login-ref>
-
-# Step 4: Snapshot to find OAuth buttons
-playwright-cli snapshot
-# Look for: "Continue with Google" or "Continue with GitHub"
-
-# Step 5: Click OAuth provider
-playwright-cli click <google-or-github-ref>
-# Complete OAuth in the visible browser window (manual step)
-
-# Step 6: Wait for redirect back to howone.ai, then save session
-playwright-cli wait https://howone.ai
 playwright-cli state-save ~/.howone/session.json
 ```
 
-### Login with Email+Code
+### Email + Code
 ```bash
 playwright-cli --headed open https://howone.ai
 playwright-cli snapshot
-playwright-cli click <login-ref>
+playwright-cli click <ref-of-login-button>
+
+# Find and fill email input
 playwright-cli snapshot
-# Find email input
-playwright-cli fill <email-input-ref> "your@email.com"
-playwright-cli click <continue-ref>
-# Wait for code email, then:
+playwright-cli fill <ref-of-email-textbox> "your@email.com"
+playwright-cli click <ref-of-continue-button>
+
+# Wait for email, then enter code
 playwright-cli snapshot
-playwright-cli fill <code-input-ref> "123456"
-playwright-cli click <verify-ref>
+playwright-cli fill <ref-of-code-textbox> "123456"
+playwright-cli click <ref-of-verify-button>
+
+# Verify + save
+playwright-cli snapshot
+mkdir -p ~/.howone
 playwright-cli state-save ~/.howone/session.json
 ```
+
+**How to verify login succeeded:** Snapshot should show a prompt textarea ("Describe the application you want to create") or a dashboard with recent projects. If you still see a "Log in" button, login failed.
 
 ---
 
 ## Workflow 2: Create App from Prompt
 
 ```bash
-# Step 1: Load session and navigate to dashboard
+# 1. Load session, open dashboard
 playwright-cli --state ~/.howone/session.json open https://howone.ai
 
-# Step 2: Find the prompt input
+# 2. Wait for page load, then snapshot
+#    (wait 3-5 seconds after open)
 playwright-cli snapshot
-# Look for: role: textbox, name containing "describe" or "create" or "application"
 
-# Step 3: Enter the prompt
-playwright-cli fill <textarea-ref> "Create an application where users can upload CSV files with sales data, and the AI can analyze trends, identify top products, and generate monthly reports with charts."
+# 3. Find prompt textarea — look for role: textbox with name like
+#    "Describe the application..." or "What do you want to build..."
+playwright-cli fill <ref-of-textarea> "Create a pet hospital management app that records pet care details and generates health reports with one click"
 
-# Step 4: Find and click generate button
+# 4. Snapshot → find submit button (may be "Generate", "Create", or an arrow icon)
 playwright-cli snapshot
-# Look for: role: button, name containing "Generate" or "Create" or arrow/submit icon
+playwright-cli click <ref-of-generate-button>
 
-# Step 5: Click generate
-playwright-cli click <generate-ref>
-
-# Step 6: Monitor generation (5-15 minutes)
-# The URL will change to howone.ai/project/<id>
-# Poll every 60-90 seconds:
+# 5. Wait 5 seconds for redirect, then snapshot
+#    URL should change to howone.ai/project/<id>
 playwright-cli snapshot
-# Look for:
-#   - Agent activity: "Ava is planning...", "Gabriel is designing..."
-#   - Progress bar or step indicators
-#   - Preview iframe appearing (signals completion)
-#   - "Publish" button appearing (signals completion)
-
-# Step 7: Repeat snapshot until generation completes
-# When you see the preview iframe or all agents show "completed":
-playwright-cli snapshot
-# Extract project ID from the URL bar or page content
 ```
 
-### Generation Completion Indicators
-- URL contains `/project/<uuid>`
-- Preview iframe is visible in snapshot (elements with `f`-prefix refs)
-- "Publish" button appears
-- All agent avatars show idle/complete status
-- Chat panel shows "Your app is ready" or similar
+### Monitoring Generation (5-15 minutes)
+
+Poll every 60-90 seconds:
+```bash
+playwright-cli snapshot
+```
+
+**What to look for in each snapshot:**
+
+| Stage | What you see in snapshot |
+|-------|------------------------|
+| Starting | Agent names (Ava, Gabriel, etc.) with activity status |
+| In progress | Agent messages like "Planning app structure...", "Designing workflow..." |
+| Nearly done | Preview iframe starts appearing (`f`-prefix refs) |
+| Complete | "Publish" button visible, iframe fully loaded with app UI |
+
+**Generation is complete when:**
+- You see a `role: button` with `name` containing "Publish"
+- OR you see multiple `f`-prefix refs (iframe content loaded)
+- OR agent activity panel shows all agents idle/done
+
+**If generation exceeds 15 minutes with no change:**
+```bash
+# Refresh the page
+playwright-cli goto https://howone.ai/project/<id>
+playwright-cli snapshot
+```
 
 ---
 
-## Workflow 3: Use App (Interact with Preview)
+## Workflow 3: Use App (Preview Iframe)
 
-The app preview runs inside an iframe. Its elements have `f`-prefix refs.
+App previews run inside an iframe. All interactive elements inside it have **`f`-prefix refs**.
 
 ```bash
-# Step 1: Navigate to the project
+# 1. Navigate to the project
 playwright-cli --state ~/.howone/session.json open https://howone.ai/project/<id>
 
-# Step 2: Wait for iframe to load, then snapshot
+# 2. Wait 5 seconds for iframe to load, then snapshot
 playwright-cli snapshot
-# iframe elements appear with f-prefix refs, e.g.:
-#   - role: textbox, ref: f3a2
-#   - role: button, name: "Submit", ref: f4b1
-#   - role: img, ref: f5c3
 
-# Step 3: Interact with app inside iframe
-playwright-cli fill <f-textbox-ref> "Test input data"
-playwright-cli click <f-submit-ref>
+# 3. Find app elements — they all have f-prefix refs
+#    Example: role: textbox, ref: f3a2 / role: button, name: "Submit", ref: f4b1
 
-# Step 4: Check results
+# 4. Interact with the app
+playwright-cli fill <f-ref-of-input> "Test input: analyze this sales data"
+playwright-cli click <f-ref-of-submit-button>
+
+# 5. Wait 3-5 seconds for app to process, then verify
 playwright-cli snapshot
-# Look for new elements: generated text, images, charts, etc.
+# Look for: new text content, images, charts, tables in the f-prefix elements
 ```
+
+**If no `f`-prefix refs appear:**
+- The iframe hasn't loaded yet — wait 5-10 seconds and snapshot again
+- If the app is still generating, wait for generation to complete first
+- Try refreshing: `playwright-cli goto https://howone.ai/project/<id>`
 
 ---
 
 ## Workflow 4: Browse App Store
 
 ```bash
-# Step 1: Navigate to App Store
+# 1. Open App Store
 playwright-cli --state ~/.howone/session.json open https://howone.ai/apps
 
-# Step 2: View available apps
+# 2. Snapshot to see app listings
 playwright-cli snapshot
-# Apps appear as cards with name, description, author
-# Look for: role: link or role: article with app names
+# Apps appear as cards — look for role: link or role: heading with app names
 
-# Step 3: Search (if search box exists)
+# 3. Search for a specific app (if search box exists)
+playwright-cli fill <ref-of-search-box> "data analysis"
 playwright-cli snapshot
-playwright-cli fill <search-ref> "data analysis"
-playwright-cli click <search-button-ref>
+playwright-cli click <ref-of-search-button>
 
-# Step 4: Click an app to view details
+# 4. Click an app card to view details
 playwright-cli snapshot
-playwright-cli click <app-card-ref>
+playwright-cli click <ref-of-app-card>
 
-# Step 5: View app details
+# 5. View app detail page
 playwright-cli snapshot
 # Shows: description, screenshots, "Use" or "Remix" buttons
 ```
@@ -181,28 +205,26 @@ playwright-cli snapshot
 ## Workflow 5: Publish App
 
 ```bash
-# Step 1: Navigate to your project
+# 1. Navigate to your project
 playwright-cli --state ~/.howone/session.json open https://howone.ai/project/<id>
 
-# Step 2: Find Publish button
+# 2. Find Publish button
 playwright-cli snapshot
-# Look for: role: button, name containing "Publish" or "Deploy"
+# Look for: role: button, name containing "Publish"
 
-# Step 3: Click Publish
-playwright-cli click <publish-ref>
+# 3. Click Publish
+playwright-cli click <ref-of-publish-button>
 
-# Step 4: Handle publish dialog (if any)
+# 4. Handle confirmation dialog (if one appears)
 playwright-cli snapshot
-# May show: visibility options, description fields, confirm button
-# Fill any required fields, then confirm
+# May show: visibility options, description field, confirm button
+playwright-cli click <ref-of-confirm-button>
 
-playwright-cli click <confirm-ref>
-
-# Step 5: Get public URL
+# 5. Verify publication — snapshot and look for:
+#    - Public URL (howone.ai/apps/<id>)
+#    - Live URL (<id>-<hash>.howone.app)
+#    - Success message
 playwright-cli snapshot
-# Look for the public URL in the page content:
-#   - howone.ai/apps/<id>
-#   - <id>-<hash>.howone.app
 ```
 
 ---
@@ -213,34 +235,25 @@ playwright-cli snapshot
 # Create output directory
 mkdir -p output/<app-name>
 
-# Take full-page screenshot
+# Screenshot the current page
 playwright-cli screenshot output/<app-name>/screenshot.png
 
-# Save snapshot for reference
+# Save snapshot as reference
 playwright-cli snapshot > output/<app-name>/snapshot.yaml
 
-# If app generates images (e.g., inside iframe):
-# 1. Snapshot to find img elements
-playwright-cli snapshot
-# 2. Look for: role: img, with src attributes in the YAML
-# 3. Download each image:
-curl -o output/<app-name>/image1.png "<src-url>"
+# If the app generated images inside the iframe:
+# 1. Look for role: img elements in the snapshot (f-prefix refs)
+# 2. The snapshot may show src URLs — extract them
+# 3. Download with curl:
+curl -o output/<app-name>/image1.png "<image-src-url>"
 
-# Create results markdown
-cat > output/<app-name>/results.md << EOF
-# <App Name>
-
+# Create a results summary
+cat > output/<app-name>/results.md << 'EOF'
+# App Results
 - **Project URL**: https://howone.ai/project/<id>
 - **Public URL**: https://howone.ai/apps/<id>
-- **Live URL**: https://<id>-<hash>.howone.app
-- **Created**: $(date -Iseconds)
 - **Prompt**: <the prompt used>
-
-## Screenshots
-![Screenshot](screenshot.png)
-
-## Generated Images
-![Image 1](image1.png)
+- **Created**: <date>
 EOF
 ```
 
@@ -248,59 +261,32 @@ EOF
 
 ## HowOne UI Map
 
-### Dashboard (howone.ai, logged in)
-- Top navigation: logo, search, notifications, user avatar
-- Main area: prompt textarea ("Describe the application you want to create")
-- Below prompt: "Generate" or arrow button
-- Sidebar or below: recent projects list
+### Dashboard (howone.ai)
+- **Top**: Navigation bar — logo, search, notifications, user avatar
+- **Center**: Large prompt textarea ("Describe the application you want to create")
+- **Below prompt**: Generate / submit button (may be arrow icon)
+- **Below**: Recent projects list
 
 ### Project Page (howone.ai/project/<id>)
-- Left panel: agent activity / chat
-- Center: app preview iframe (`iframe[title="Preview"]`)
-- Right panel: workflow editor (nodes and connections)
-- Top bar: project name, Publish button, settings
+- **Left panel**: Agent activity / chat messages (Ava, Gabriel, Mia, Noah, Olivia)
+- **Center**: App preview iframe — this is where `f`-prefix refs live
+- **Right panel**: Workflow editor canvas (nodes and connections)
+- **Top bar**: Project name, Publish button, settings gear
 
 ### App Store (howone.ai/apps)
-- Grid of app cards: thumbnail, name, description, author
-- Search bar at top
-- Category filters
+- **Top**: Search bar, category filters
+- **Main**: Grid of app cards — thumbnail, name, description, author
 
 ---
 
-## Error Recovery
+## Common Pitfalls
 
-### Session Expired
-```bash
-# Symptom: snapshot shows login page instead of dashboard
-rm ~/.howone/session.json
-playwright-cli --headed open https://howone.ai
-# Complete login flow, then:
-playwright-cli state-save ~/.howone/session.json
-```
-
-### Element Not Found
-```bash
-# Symptom: click/fill fails with "element not found"
-# Solution: take fresh snapshot and search for the element
-playwright-cli snapshot
-# The ref numbers have changed — find the element by its text/role
-```
-
-### Generation Stuck
-```bash
-# Symptom: no progress after 15+ minutes
-# Check agent status:
-playwright-cli snapshot
-# If agents show errors, try:
-playwright-cli click <retry-ref>  # if retry button exists
-# Or refresh:
-playwright-cli goto https://howone.ai/project/<id>
-```
-
-### iframe Not Loading
-```bash
-# Symptom: no f-prefix refs in snapshot
-# Wait 5-10 seconds for iframe to initialize:
-playwright-cli snapshot  # try again after a brief wait
-# If still missing, the app may still be generating
-```
+| Pitfall | Prevention |
+|---------|-----------|
+| Using a ref from a previous snapshot | Always snapshot immediately before acting |
+| Clicking too fast after page load | Wait 3-5 seconds after `open`/`goto` before snapshot |
+| Polling generation too frequently | Wait 60-90 seconds between snapshots during generation |
+| Trying to interact with iframe before it loads | Look for `f`-prefix refs; if none, wait and re-snapshot |
+| Forgetting `--headed` for OAuth | Headless OAuth will hang — always use `--headed` for login |
+| Forgetting `--state` flag | Without it, session won't load and you'll see the login page |
+| Not saving session after login | Always `state-save` immediately after successful login |
