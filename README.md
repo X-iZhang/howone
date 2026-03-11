@@ -66,7 +66,6 @@ playwright-cli snapshot
 ## Project Structure
 
 ```
-├── CLAUDE.md                                # Project context for Claude Code
 ├── howone-automation/
 │   ├── SKILL.md                             # Skill manifest (triggers, rules, capabilities)
 │   └── references/
