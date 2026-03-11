@@ -81,16 +81,6 @@ playwright-cli snapshot
 - **iframe refs**: App previews live in an iframe; their elements get `f`-prefix refs (e.g., `f19e17`)
 - **No hardcoded refs**: Refs are ephemeral — always snapshot before acting
 
-## EvoScientist Skill
-
-Install as an EvoScientist skill:
-
-```bash
-EvoSci /install-skill path/to/howone/howone-automation
-```
-
-Triggers on mentions of: HowOne, howone.ai, agentic app builder, create/publish/browse apps.
-
 ## License
 
 MIT
