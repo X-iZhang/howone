@@ -1,0 +1,33 @@
+# macOS
+.DS_Store
+
+# Playwright CLI artifacts (snapshots, screenshots, logs from sessions)
+.playwright-cli/
+.playwright/
+
+# Claude Code (local settings, skills cache)
+.claude/
+
+# Session data (contains auth tokens)
+~/.howone/
+
+# Generated output (app results, screenshots, images)
+howone-automation/output/
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Temp files
+*.tmp
+*.log
