@@ -82,12 +82,7 @@ The agent will expand your idea into a detailed prompt, submit it to HowOne, and
 ## Project Structure
 
 ```
-├── SKILL.md                     # Main skill — self-contained, prompt guide included
-├── references/                  # Deep-dive reference docs
-│   ├── browser-use-workflows.md # Full browser-use command sequences + debugging
-│   ├── playwright-workflows.md  # Full playwright-cli workflows + UI map
-│   ├── prompt-guide.md          # Prompt templates by app type
-│   └── workflow-types.md        # HowOne workflow patterns & self-evolution
+├── SKILL.md                     # Main skill — fully self-contained
 └── howone-automation/
     └── SKILL.md                 # Detailed version with all 7 workflows + UI map
 ```

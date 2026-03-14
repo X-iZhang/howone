@@ -132,6 +132,47 @@ UI: Dashboard with filter sidebar, chart area in center, data table below.
 Output format: Interactive charts, downloadable PDF reports.
 ```
 
+**More prompt examples by app type:**
+
+*Content Generation:*
+```
+Create an application where users can enter a topic and target audience,
+and the AI can generate blog posts, social media captions, and email
+newsletters. Include tone adjustment (formal/casual) and length controls.
+```
+
+*Education:*
+```
+Create an application where students can log subjects, incorrect test
+questions, and their wrong answers. The AI should identify knowledge gaps,
+generate detailed explanations for each mistake, and produce progress
+reports based on the student's error history.
+```
+
+*Goal Management:*
+```
+Create a goal tracking application. Users enter a goal and a target
+completion date. The AI breaks the goal into actionable steps, each with
+a deadline, specific deliverables, and implementation guidance. Include
+progress monitoring and reminders.
+```
+
+*Contract Analysis:*
+```
+Create an application where users can paste contract text and the AI will
+highlight potential risk clauses, ambiguous terms, and important conditions,
+with plain-language explanations for each.
+```
+
+#### Common Prompt Mistakes
+
+| Bad | Good |
+|-----|------|
+| "Make an app for me" | "Create a task management app where users can..." |
+| "Something with AI" | "AI should analyze the input and generate a report" |
+| "Like that other app" | "Features: user profiles, dashboard, notifications" |
+| Too vague | Specific inputs, outputs, and features |
+
 #### After writing the prompt, submit it:
 
 ```bash
@@ -184,6 +225,23 @@ Elements change on every page load — always re-read before acting.
 ---
 
 ## Core Workflows
+
+### Respond to AI questions during generation
+
+HowOne may ask clarifying questions during generation (e.g., "补充这个应用具体功能"). Find the chat textarea and reply:
+
+```bash
+# browser-use
+browser-use state | grep textarea
+browser-use click <chat-textarea-index>
+browser-use type "Additional details: ..."
+browser-use keys "Enter"
+
+# OR playwright-cli
+playwright-cli snapshot
+playwright-cli fill <ref-of-chat-input> "Additional details: ..."
+playwright-cli click <ref-of-send-button>
+```
 
 ### Publish an app
 ```bash
@@ -244,6 +302,64 @@ browser-use state > output/<app-name>/state.txt
 | No iframe content | Wait 5–10s, re-snapshot — look for `f`-prefix refs |
 | Generation stuck >15 min | Refresh: `browser-use open https://howone.ai/project/<id>` |
 
+## Debugging
+
+When something isn't working, use these techniques:
+
+```bash
+# Screenshot current state
+browser-use screenshot /tmp/debug.png
+
+# View page HTML
+browser-use eval "document.body.innerHTML.substring(0, 5000)"
+
+# Find all interactive elements
+browser-use eval "
+[...document.querySelectorAll('button, a, input, textarea, [role=button]')]
+  .filter(e => e.offsetParent !== null)
+  .map((e, i) => ({tag: e.tagName, type: e.type, text: e.textContent?.substring(0,50), aria: e.getAttribute('aria-label')}))
+  .slice(0, 20)
+"
+
+# Force click with JavaScript (when normal click fails)
+browser-use eval "document.querySelector('button[aria-label=\"Publish\"]')?.click(); 'clicked';"
+```
+
+### Handle multiple tabs
+
+```bash
+browser-use sessions            # list tabs
+browser-use switch 0            # switch to first tab
+browser-use state | grep -iE "App Name"  # verify which app
+browser-use close               # close current tab
+```
+
+## UI Map
+
+### Dashboard (howone.ai)
+- **Top**: Navigation bar — logo, search, notifications, user avatar
+- **Center**: Large prompt textarea ("Describe the application you want to create")
+- **Below prompt**: Generate/submit button (may be arrow icon)
+- **Below**: Recent projects list
+
+### Project Page (howone.ai/project/\<id\>)
+- **Left panel**: Agent chat messages (Ava, Gabriel, Mia, Noah, Olivia)
+- **Center**: App preview iframe — `f`-prefix refs live here
+- **Right panel**: Workflow editor canvas (nodes and connections)
+- **Top bar**: Project name, Publish button, settings gear
+
+### App Store (howone.ai/apps)
+- **Top**: Search bar, category filters
+- **Main**: Grid of app cards — thumbnail, name, description, author
+
+## Iterate After Generation
+
+If the generated app isn't perfect, you can refine it:
+
+1. **Chat panel**: Type changes like "Add a filter for date range" in the left chat panel
+2. **Workflow editor**: Click nodes in the right panel to edit their instructions or logic
+3. **Self-evolution**: HowOne can auto-optimize workflows — provide 2–5 input/output examples, rate them, and trigger optimization
+
 ## HowOne URLs
 
 | Page | URL |
@@ -253,11 +369,3 @@ browser-use state > output/<app-name>/state.txt
 | App Store | `https://howone.ai/apps` |
 | Published app | `https://howone.ai/apps/<id>` |
 | Live app | `https://<id>-<hash>.howone.app` |
-
-## Deep-Dive References
-
-For detailed command sequences, prompt templates, and workflow patterns:
-- [browser-use-workflows.md](https://raw.githubusercontent.com/X-iZhang/howone/main/references/browser-use-workflows.md) — full browser-use commands with debugging tips
-- [playwright-workflows.md](https://raw.githubusercontent.com/X-iZhang/howone/main/references/playwright-workflows.md) — full playwright-cli workflows with UI map
-- [prompt-guide.md](https://raw.githubusercontent.com/X-iZhang/howone/main/references/prompt-guide.md) — prompt templates for different app types
-- [workflow-types.md](https://raw.githubusercontent.com/X-iZhang/howone/main/references/workflow-types.md) — HowOne workflow patterns and self-evolution

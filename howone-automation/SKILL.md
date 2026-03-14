@@ -310,12 +310,3 @@ EOF
 | App Store | `https://howone.ai/apps` |
 | Public app | `https://howone.ai/apps/<id>` |
 | Live app | `https://<id>-<hash>.howone.app` |
-
----
-
-## References
-
-- [browser-use-workflows.md](https://raw.githubusercontent.com/X-iZhang/howone/main/references/browser-use-workflows.md) — step-by-step browser-use commands, debugging tips, quick reference card
-- [playwright-workflows.md](https://raw.githubusercontent.com/X-iZhang/howone/main/references/playwright-workflows.md) — step-by-step playwright-cli workflows, UI map, common pitfalls
-- [prompt-guide.md](https://raw.githubusercontent.com/X-iZhang/howone/main/references/prompt-guide.md) — prompt templates by app type, writing tips
-- [workflow-types.md](https://raw.githubusercontent.com/X-iZhang/howone/main/references/workflow-types.md) — HowOne workflow patterns, node types, self-evolution
