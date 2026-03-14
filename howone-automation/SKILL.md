@@ -1,59 +1,46 @@
 ---
 name: howone-automation
-description: "Browser automation for HowOne AI (howone.ai) using browser-use or playwright-cli.
-  Covers login, creating AI apps from prompts, browsing App Store, using app previews,
-  publishing apps, and saving results. Use when: user mentions HowOne, howone.ai,
-  or wants to create/publish/browse apps on HowOne.
-  Do NOT use for general web scraping or other platforms."
+description: "Invoke whenever 'HowOne' or 'howone.ai' appears in the user's message — regardless
+  of task type or language. Automates all HowOne AI platform operations: login (Google/GitHub/Email),
+  creating AI apps from prompts, monitoring generation, publishing apps, browsing the App Store,
+  testing app previews in iframes, and session recovery. Uses browser-use (preferred) or
+  playwright-cli for browser control. Not for other platforms or generic browser tasks."
 ---
 
-# HowOne Automation
+# HowOne Automation — Detailed Reference
 
-Automate HowOne AI platform operations. Supports two browser tools — **auto-detect which is available first**.
+This is the full reference for automating [HowOne AI](https://howone.ai/). For a quick-start version, see the root [`SKILL.md`](../SKILL.md).
 
 ---
 
-## Step 0: Detect Available Tool (Always Do This First)
+## Tool Detection & Install
 
 ```bash
-# Check browser-use
-browser-use --help > /dev/null 2>&1 && echo "USE: browser-use" || echo "browser-use not found"
-
-# Check playwright-cli
-playwright-cli --help > /dev/null 2>&1 && echo "USE: playwright-cli" || echo "playwright-cli not found"
+# Detect
+browser-use --help 2>/dev/null && echo "✓ browser-use" || echo "✗ browser-use"
+playwright-cli --help 2>/dev/null && echo "✓ playwright-cli" || echo "✗ playwright-cli"
 ```
 
-Use whichever tool is available. If both are installed, **prefer `browser-use`** (numeric indices are more reliable than hex refs).
+Prefer **browser-use** (more stable indices, better shadow DOM support). Install if missing:
 
----
-
-## Prerequisites (if tool not yet installed)
-
-**browser-use** (Python, preferred):
 ```bash
+# browser-use (Python 3.11+)
 pipx install 'browser-use[cli]'
-# OR
-uv tool install 'browser-use[cli]'
-# Requires Python 3.11+. First run auto-installs Chromium.
 export PATH="$HOME/.local/bin:$PATH"
-```
 
-**playwright-cli** (Node.js, fallback):
-```bash
+# playwright-cli (Node.js)
 npm install -g @anthropic-ai/playwright-cli@latest
 playwright-cli install chromium
 ```
 
 ---
 
-## Command Reference
-
-Every action maps to both tools:
+## Complete Command Reference
 
 | Action | `browser-use` | `playwright-cli` |
 |--------|--------------|-----------------|
 | Open page (headless) | `browser-use open <url>` | `playwright-cli --state ~/.howone/session.json open <url>` |
-| Open page (headed/OAuth) | `browser-use --headed open <url>` | `playwright-cli --headed open <url>` |
+| Open page (headed) | `browser-use --headed open <url>` | `playwright-cli --headed open <url>` |
 | See page elements | `browser-use state` | `playwright-cli snapshot` |
 | Click element | `browser-use click <index>` | `playwright-cli click <ref>` |
 | Type into focused field | `browser-use type "text"` | *(use fill instead)* |
@@ -65,43 +52,38 @@ Every action maps to both tools:
 | Switch tab | `browser-use switch <n>` | `playwright-cli tab-switch <n>` |
 | Run JS | `browser-use eval "js"` | `playwright-cli evaluate "js"` |
 
-### How Elements Work (Key Difference)
+### How Elements Work
 
-**`browser-use`** — `state` returns a numbered list:
+**`browser-use`** — `state` returns numbered elements:
 ```
 [15]<textarea id=app-prompt />
 [16]<button aria-label=Generate />
 ```
-→ Use the number: `browser-use click 16`
-→ Find elements: `browser-use state | grep textarea`
+→ `browser-use click 16`, `browser-use state | grep textarea`
 
 **`playwright-cli`** — `snapshot` returns YAML with hex refs:
 ```yaml
 - role: textbox
   name: "Describe the application..."
   ref: e4a2
-- role: button
-  name: "Generate"
-  ref: e5b3
 ```
-→ Use the ref: `playwright-cli click e5b3`
-→ Find elements by `role` + `name`, never reuse a ref from a previous snapshot
+→ `playwright-cli click e4a2` — find elements by `role` + `name`, never reuse old refs
 
 ---
 
 ## Critical Rules
 
-1. **Always re-read elements before acting.** Indices (browser-use) and refs (playwright-cli) change on every page load.
-2. **Use `--headed` only for OAuth login.** Everything else runs headless.
-3. **Wait after navigation.** After `open`, wait 3-5 seconds before reading elements.
-4. **Generation takes 5-15 minutes.** Poll every 60-90 seconds. Do not rapid-fire.
-5. **Verify after every action.** Read page state again to confirm the action worked.
+1. **Always re-read elements before acting** — indices/refs change on every page load
+2. **`--headed` only for OAuth login** — everything else runs headless
+3. **Wait 3–5 seconds after navigation** before reading elements
+4. **Generation takes 5–15 minutes** — poll every 60–90 seconds, do not rapid-fire
+5. **Verify after every action** — re-read page state to confirm it worked
 
 ---
 
 ## Workflow 1: Login
 
-OAuth requires a visible browser (`--headed`). Three auth methods: Google OAuth, GitHub OAuth, Email+Code.
+OAuth requires `--headed`. Three methods: Google OAuth, GitHub OAuth, Email+Code.
 
 **browser-use:**
 ```bash
@@ -109,17 +91,13 @@ export PATH="$HOME/.local/bin:$PATH"
 browser-use --headed open https://howone.ai
 sleep 3
 browser-use state | grep -iE "login|sign|google|github|email"
-# Click the login button
 browser-use click <login-button-index>
-# Fill email if using Email+Code
+# Email+Code flow:
 browser-use input <email-index> "your@email.com"
 browser-use click <continue-index>
-# Enter verification code
 browser-use input <code-index> "123456"
 browser-use click <verify-index>
-# Verify success (should see your name)
-browser-use state | grep -i "hello"
-# Save session
+browser-use state | grep -i "hello"   # verify success
 mkdir -p ~/.config/browser-use
 browser-use cookies export ~/.config/browser-use/howone.json
 ```
@@ -135,12 +113,12 @@ playwright-cli click <ref-of-continue-button>
 playwright-cli snapshot
 playwright-cli fill <ref-of-code-textbox> "123456"
 playwright-cli click <ref-of-verify-button>
-playwright-cli snapshot   # verify: should show dashboard, not login page
+playwright-cli snapshot   # verify: dashboard, not login page
 mkdir -p ~/.howone
 playwright-cli state-save ~/.howone/session.json
 ```
 
-**Login success:** Page shows your name (e.g. "Hello, Xi") or a project prompt textarea — not a login button.
+**Success:** Page shows your name (e.g. "Hello, Xi") or a prompt textarea — not a login button.
 
 ---
 
@@ -148,7 +126,6 @@ playwright-cli state-save ~/.howone/session.json
 
 **browser-use:**
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
 browser-use open https://howone.ai
 sleep 3
 browser-use state | grep textarea
@@ -169,32 +146,29 @@ playwright-cli click <ref-of-generate-button>
 playwright-cli snapshot   # URL should change to howone.ai/project/<id>
 ```
 
-**Generation stages** (check with `state` / `snapshot`):
+**Generation stages:**
 
 | Stage | browser-use sees | playwright-cli sees |
 |-------|-----------------|-------------------|
 | Starting | "Generating info..." | agent names visible |
 | In progress | "Our AI agents are building..." | agent messages |
-| Complete | "Completed" × many, "Publish Your App Now" | Publish button + f-prefix refs |
+| Complete | "Publish Your App Now" | Publish button + f-prefix refs |
 
 ---
 
-## Workflow 3: Monitor Generation (5-15 minutes)
+## Workflow 3: Monitor Generation (5–15 minutes)
 
-**browser-use:**
 ```bash
-# Poll every 60 seconds
+# browser-use
 browser-use state | grep -iE "ready|Publish Your App Now|Completed"
 browser-use screenshot /tmp/progress.png
-```
 
-**playwright-cli:**
-```bash
+# playwright-cli
 playwright-cli snapshot
-# Look for: role: button, name: "Publish" — or multiple f-prefix refs
+# Look for: role: button, name: "Publish" — or f-prefix refs
 ```
 
-**Complete when:** `browser-use` shows "Publish Your App Now" / `playwright-cli` snapshot shows Publish button + iframe `f`-prefix refs.
+**Done when:** "Publish Your App Now" appears or Publish button + iframe `f`-prefix refs are visible.
 
 ---
 
@@ -205,73 +179,62 @@ playwright-cli snapshot
 browser-use state | grep -i "publish"
 browser-use click <publish-button-index>
 sleep 2
-browser-use state | grep -iE "confirm|publish your app|url"
 browser-use click <confirm-publish-index>
 sleep 15
-browser-use state | grep -E "howone\.app"
-# Or extract URL with:
 browser-use eval "[...document.querySelectorAll('input')].map(i=>i.value).filter(v=>v.includes('howone'))"
 ```
 
 **playwright-cli:**
 ```bash
-playwright-cli snapshot
 playwright-cli click <ref-of-publish-button>
 playwright-cli snapshot
 playwright-cli click <ref-of-confirm-button>
-playwright-cli snapshot   # look for public URL in the snapshot
+playwright-cli snapshot   # look for public URL
 ```
 
 ---
 
 ## Workflow 5: Use App Preview (iframe)
 
-The app preview lives inside an iframe.
+The app preview is inside an iframe. **playwright-cli is better here** — iframe elements get `f`-prefix refs.
 
-**browser-use** — interact via `eval` (cross-origin may block some actions):
+**playwright-cli (recommended for iframes):**
+```bash
+playwright-cli snapshot
+# Elements inside iframe: refs like f3a2, f4b1
+playwright-cli fill <f-ref-of-input> "Test input"
+playwright-cli click <f-ref-of-submit>
+playwright-cli snapshot
+```
+
+**browser-use (alternative):**
 ```bash
 browser-use state | grep -i iframe
 browser-use eval "
 const iframe = document.querySelector('iframe[title=\"Preview\"]');
 iframe ? 'iframe found' : 'not found';
 "
-# For visible inputs, scroll into view and try clicking by index
 browser-use scroll down
 browser-use state | grep -iE "input|textarea|button"
 ```
-
-**playwright-cli** — iframe elements get `f`-prefix refs automatically:
-```bash
-playwright-cli snapshot
-# Elements inside iframe have refs like f3a2, f4b1
-playwright-cli fill <f-ref-of-input> "Test input"
-playwright-cli click <f-ref-of-submit>
-playwright-cli snapshot   # verify response appeared
-```
-
-> **playwright-cli has better iframe support** — use it if available when interacting inside app previews.
 
 ---
 
 ## Workflow 6: Browse App Store
 
-**browser-use:**
 ```bash
+# browser-use
 browser-use open https://howone.ai/apps
 sleep 3
 browser-use state | grep -iE "app|search|button" | head -20
 browser-use input <search-index> "your search term"
 browser-use keys "Enter"
-browser-use state | grep -iE "view app|remix"
-```
 
-**playwright-cli:**
-```bash
+# playwright-cli
 playwright-cli --state ~/.howone/session.json open https://howone.ai/apps
 playwright-cli snapshot
 playwright-cli fill <ref-of-search> "your search term"
 playwright-cli click <ref-of-search-button>
-playwright-cli snapshot
 ```
 
 ---
@@ -280,18 +243,9 @@ playwright-cli snapshot
 
 ```bash
 mkdir -p output/<app-name>
-
-# Screenshot (same for both tools)
 browser-use screenshot output/<app-name>/screenshot.png
-# OR
-playwright-cli screenshot output/<app-name>/screenshot.png
-
-# Save page state for reference
 browser-use state > output/<app-name>/state.txt
-# OR
-playwright-cli snapshot > output/<app-name>/snapshot.yaml
 
-# Results summary
 cat > output/<app-name>/results.md << 'EOF'
 # App Results
 - **App Name**: <name>
@@ -309,9 +263,9 @@ EOF
 
 | Action | browser-use | playwright-cli |
 |--------|------------|----------------|
-| Save session | `browser-use cookies export ~/.config/browser-use/howone.json` | `playwright-cli state-save ~/.howone/session.json` |
-| Load session | *(auto-loaded from cookies)* | `playwright-cli --state ~/.howone/session.json open <url>` |
-| Clear session | `rm ~/.config/browser-use/howone.json` | `rm ~/.howone/session.json` |
+| Save | `browser-use cookies export ~/.config/browser-use/howone.json` | `playwright-cli state-save ~/.howone/session.json` |
+| Load | *(auto-loaded)* | `playwright-cli --state ~/.howone/session.json open <url>` |
+| Clear | `rm ~/.config/browser-use/howone.json` | `rm ~/.howone/session.json` |
 
 ---
 
@@ -319,26 +273,31 @@ EOF
 
 | Symptom | browser-use fix | playwright-cli fix |
 |---------|----------------|-------------------|
-| Command not found | `export PATH="$HOME/.local/bin:$PATH"` | Reinstall: `npm install -g @anthropic-ai/playwright-cli@latest` |
-| Element not found / index stale | Run `browser-use state` again | Run `playwright-cli snapshot` again |
-| Still on login page | Re-login with `--headed`, re-export cookies | Re-login with `--headed`, re-run `state-save` |
-| iframe content not accessible | Use `browser-use scroll` + retry, or switch to playwright-cli | Wait 5-10s, snapshot again — look for `f`-prefix refs |
-| Generation >15 min, no progress | `browser-use open https://howone.ai/project/<id>` | `playwright-cli goto https://howone.ai/project/<id>` |
-| Publish URL not appearing | Wait 15-30s longer, use `eval` to query inputs | Snapshot again after 15s |
+| Command not found | `export PATH="$HOME/.local/bin:$PATH"` | `npm install -g @anthropic-ai/playwright-cli@latest` |
+| Element not found | Run `browser-use state` again | Run `playwright-cli snapshot` again |
+| Still on login page | Re-login `--headed`, re-export cookies | Re-login `--headed`, re-run `state-save` |
+| iframe inaccessible | `browser-use scroll` + retry, or use playwright-cli | Wait 5–10s, re-snapshot for `f`-prefix refs |
+| Generation stuck >15 min | `browser-use open https://howone.ai/project/<id>` | `playwright-cli goto https://howone.ai/project/<id>` |
+| Publish URL missing | Wait 15–30s, `eval` to query inputs | Snapshot again after 15s |
 
 ---
 
-## HowOne AI Agents
+## HowOne UI Map
 
-During generation, these agents collaborate (visible in left panel):
+### Dashboard (howone.ai)
+- **Top**: Nav bar — logo, search, notifications, avatar
+- **Center**: Large prompt textarea
+- **Below**: Generate button, recent projects
 
-| Agent | Role |
-|-------|------|
-| **Ava** | Product Manager — plans app structure |
-| **Gabriel** | Workflow Designer — creates agentic workflows |
-| **Mia** | Frontend Designer — designs UI |
-| **Noah** | Developer — implements code |
-| **Olivia** | QA — tests the app |
+### Project Page (howone.ai/project/\<id\>)
+- **Left panel**: Agent chat (Ava, Gabriel, Mia, Noah, Olivia)
+- **Center**: App preview iframe (`f`-prefix refs)
+- **Right panel**: Workflow editor (nodes + connections)
+- **Top bar**: Project name, Publish button
+
+### App Store (howone.ai/apps)
+- **Top**: Search bar, category filters
+- **Main**: Grid of app cards with View/Remix buttons
 
 ---
 
@@ -347,7 +306,6 @@ During generation, these agents collaborate (visible in left panel):
 | Page | URL |
 |------|-----|
 | Dashboard | `https://howone.ai` |
-| My Apps | `https://howone.ai` → click Dashboard |
 | Project editor | `https://howone.ai/project/<id>` |
 | App Store | `https://howone.ai/apps` |
 | Public app | `https://howone.ai/apps/<id>` |
@@ -357,7 +315,7 @@ During generation, these agents collaborate (visible in left panel):
 
 ## References
 
-- [references/browser-use-workflows.md](references/browser-use-workflows.md) — Detailed browser-use commands and debugging
-- [references/playwright-workflows.md](references/playwright-workflows.md) — Detailed playwright-cli command sequences
-- [references/prompt-guide.md](references/prompt-guide.md) — Prompt templates for HowOne app generation
-- [references/workflow-types.md](references/workflow-types.md) — HowOne workflow patterns and node types
+- [browser-use-workflows.md](https://raw.githubusercontent.com/X-iZhang/howone/main/references/browser-use-workflows.md) — step-by-step browser-use commands, debugging tips, quick reference card
+- [playwright-workflows.md](https://raw.githubusercontent.com/X-iZhang/howone/main/references/playwright-workflows.md) — step-by-step playwright-cli workflows, UI map, common pitfalls
+- [prompt-guide.md](https://raw.githubusercontent.com/X-iZhang/howone/main/references/prompt-guide.md) — prompt templates by app type, writing tips
+- [workflow-types.md](https://raw.githubusercontent.com/X-iZhang/howone/main/references/workflow-types.md) — HowOne workflow patterns, node types, self-evolution

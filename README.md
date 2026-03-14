@@ -1,39 +1,63 @@
 # HowOne Automation
 
-An [agent skill](https://skills.sh/) that automates [HowOne AI](https://howone.ai/) — an agentic app builder platform. Uses `playwright-cli` snapshot-based browser control to create, publish, browse, and interact with AI-generated apps programmatically. No scripts needed — the agent issues commands directly.
+A [Claude Code skill](https://docs.anthropic.com/en/docs/claude-code) that automates [HowOne AI](https://howone.ai/) — an agentic app builder platform. Give it an idea, and it creates a full web app with AI-powered workflows.
+
+Supports two browser tools: **`browser-use`** (recommended) and `playwright-cli` (fallback). The agent auto-detects which is available.
 
 ## Install
 
+**Option A: npx skills CLI**
 ```bash
 npx skills add X-iZhang/howone
 ```
 
-## How It Works
+**Option B: Manual install**
+```bash
+git clone https://github.com/X-iZhang/howone
+# Copy the whole skill directory:
+cp -r howone ~/.claude/skills/howone
+# Or just the main SKILL.md:
+cp howone/SKILL.md ~/.claude/skills/howone.md
+```
 
-Instead of fragile CSS selectors, this skill teaches the agent to:
+**Option C: Direct URL (no install needed)**
 
-1. **Snapshot** the page → get a YAML description of all visible elements with refs
-2. **Find** the target element by text/role (not hardcoded ref numbers)
-3. **Act** on it (`click`, `fill`, `screenshot`, etc.)
+Claude Code can read the skill directly:
+```
+https://raw.githubusercontent.com/X-iZhang/howone/main/SKILL.md
+```
 
-This approach is resilient to UI changes since it doesn't depend on specific selectors.
+## What It Does
+
+You tell the agent what app you want. It:
+
+1. **Expands your idea** into a detailed prompt optimized for HowOne
+2. **Opens howone.ai** and logs in (session persisted after first login)
+3. **Submits the prompt** and monitors generation (5–15 minutes)
+4. **Publishes the app** and returns the public URL
+5. **Tests the app** by interacting with the preview iframe
 
 ## Capabilities
 
 | Capability | Description |
 |-----------|-------------|
 | **Login** | Google/GitHub/Email OAuth with session persistence |
-| **Create App** | Enter a prompt, monitor 5-15 min generation, get project URL |
-| **Use App** | Interact with app preview iframe (input, click, read results) |
+| **Create App** | Expand user ideas into detailed prompts, submit, monitor generation |
+| **Publish** | Deploy to App Store, get public URL |
 | **Browse Store** | Search and view apps on howone.ai/apps |
-| **Publish** | Deploy app to App Store, get public URL |
-| **Save Results** | Screenshot, download images, create result markdown |
+| **Test App** | Interact with app preview iframe |
+| **Save Results** | Screenshot, save state, create result markdown |
 
 ## Quick Start
 
 ### Prerequisites
 
 ```bash
+# Install browser-use (recommended)
+pipx install 'browser-use[cli]'
+export PATH="$HOME/.local/bin:$PATH"
+
+# OR install playwright-cli (fallback)
 npm install -g @anthropic-ai/playwright-cli@latest
 playwright-cli install chromium
 ```
@@ -42,48 +66,40 @@ playwright-cli install chromium
 
 ```bash
 # OAuth requires a visible browser
-playwright-cli --headed open https://howone.ai
-
-# Complete login, then save session
-mkdir -p ~/.howone
-playwright-cli state-save ~/.howone/session.json
+browser-use --headed open https://howone.ai
+# Complete login, then save session:
+mkdir -p ~/.config/browser-use
+browser-use cookies export ~/.config/browser-use/howone.json
 ```
 
 ### Create an App
 
-```bash
-# Load session (headless by default)
-playwright-cli --state ~/.howone/session.json open https://howone.ai
+Just tell the agent:
+> "Help me create a pet hospital management app on HowOne"
 
-# Snapshot → find prompt input → fill → generate
-playwright-cli snapshot
-playwright-cli fill <textarea-ref> "Create a pet hospital management app"
-playwright-cli snapshot
-playwright-cli click <generate-button-ref>
-
-# Poll every 60-90 seconds until complete
-playwright-cli snapshot
-```
-
-> **Note:** `<ref>` values change every page load. Always snapshot first, find elements by their text/role in the YAML output.
+The agent will expand your idea into a detailed prompt, submit it to HowOne, and monitor the generation process.
 
 ## Project Structure
 
 ```
-├── howone-automation/
-│   ├── SKILL.md                             # Skill manifest (triggers, rules, capabilities)
-│   └── references/
-│       ├── playwright-workflows.md          # Detailed step-by-step command sequences
-│       ├── prompt-guide.md                  # HowOne prompt templates & best practices
-│       └── workflow-types.md                # HowOne workflow patterns & node types
+├── SKILL.md                     # Main skill — self-contained, prompt guide included
+├── references/                  # Deep-dive reference docs
+│   ├── browser-use-workflows.md # Full browser-use command sequences + debugging
+│   ├── playwright-workflows.md  # Full playwright-cli workflows + UI map
+│   ├── prompt-guide.md          # Prompt templates by app type
+│   └── workflow-types.md        # HowOne workflow patterns & self-evolution
+└── howone-automation/
+    └── SKILL.md                 # Detailed version with all 7 workflows + UI map
 ```
 
 ## Key Concepts
 
-- **Session persistence**: `state-save` / `--state` flag manages login across browser launches (`~/.howone/session.json`)
-- **Headed vs headless**: Use `--headed` for OAuth login; headless (default) for everything else
-- **iframe refs**: App previews live in an iframe; their elements get `f`-prefix refs (e.g., `f19e17`)
-- **No hardcoded refs**: Refs are ephemeral — always snapshot before acting
+- **Prompt quality is everything**: HowOne builds apps from your prompt — detailed prompts produce better apps
+- **Preferred tool**: `browser-use` — numeric indices are more stable, better shadow DOM support
+- **Session persistence**: Login once, reuse across sessions
+- **Headed vs headless**: `--headed` only for OAuth login; headless for everything else
+- **iframe interaction**: App previews are in iframes; `playwright-cli` handles these better (`f`-prefix refs)
+- **Generation time**: 5–15 minutes — poll every 60–90 seconds
 
 ## License
 

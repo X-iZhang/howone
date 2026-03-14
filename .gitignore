@@ -1,7 +1,7 @@
 # macOS
 .DS_Store
 
-# Playwright CLI artifacts (snapshots, screenshots, logs from sessions)
+# Playwright CLI artifacts
 .playwright-cli/
 .playwright/
 
@@ -9,11 +9,14 @@
 .claude/
 CLAUDE.md
 
-# Session data (contains auth tokens)
+# Session data (auth tokens — never commit)
 ~/.howone/
 
-# Generated output (app results, screenshots, images)
+# Generated output
 howone-automation/output/
+
+# Workspace (eval/testing artifacts)
+howone-automation-workspace/
 
 # Node
 node_modules/
