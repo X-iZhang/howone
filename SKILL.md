@@ -258,15 +258,29 @@ playwright-cli snapshot   # look for public URL
 ```
 
 ### Test app preview (iframe)
+
+The app preview runs inside an iframe. browser-use can see shadow DOM elements via `state` but may not be able to click elements scrolled out of view within the iframe.
+
+**Best approach — open iframe as standalone page:**
 ```bash
-# playwright-cli is better for iframes (f-prefix refs)
+# 1. Extract the iframe URL
+browser-use eval "document.querySelector('iframe[title=Preview]')?.src"
+
+# 2. Open it directly — now all elements are fully accessible
+browser-use open "<iframe-url>"
+sleep 3
+
+# 3. Interact normally
+browser-use state | head -40
+browser-use click <button-index>
+browser-use input <textarea-index> "test input"
+```
+
+**Alternative — playwright-cli (f-prefix refs):**
+```bash
 playwright-cli snapshot
 playwright-cli fill <f-ref> "test input"
 playwright-cli click <f-ref-submit>
-
-# browser-use alternative
-browser-use scroll down
-browser-use state | grep -iE "input|button"
 ```
 
 ### Browse App Store
@@ -290,7 +304,7 @@ browser-use state > output/<app-name>/state.txt
 2. **`--headed` only for login** — everything else runs headless
 3. **Wait 3–5 seconds after navigation** before reading the page
 4. **Poll every 60–90 seconds** during generation — don't rapid-fire
-5. **Use playwright-cli for iframes** — it can directly interact with `f`-prefix refs inside app previews
+5. **For iframe interaction** — extract iframe URL with `eval` and open as standalone page, or use playwright-cli's `f`-prefix refs
 
 ## Error Recovery
 
